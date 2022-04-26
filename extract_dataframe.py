@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from textblob import TextBlob
+import zipfile
 
 def read_json(json_file: str)->list:
     """
@@ -84,10 +85,7 @@ class TweetDfExtractor:
         return friends_count
 
     def is_sensitive(self)->list:
-        try:
-            is_sensitive = [x['possibly_sensitive'] for x in self.tweets_list]
-        except KeyError:
-            is_sensitive = None
+        is_sensitive = [x.get('possibly_sensitive', None) for x in self.tweets_list]
 
         return is_sensitive
 
@@ -97,7 +95,7 @@ class TweetDfExtractor:
         return favourite_count
     
     def find_retweet_count(self)->list:
-        retweet_count = [tweet['retweeted_status']['retweet_count'] for tweet in self.tweets_list] 
+        retweet_count = [(x.get('retweeted_status', {})).get('retweet_count', None) for x in self.tweets_list]
 
         return retweet_count
 
@@ -107,21 +105,29 @@ class TweetDfExtractor:
         return hashtags
 
     def find_mentions(self)->list:
-        mentions = [tweet['entities']['user_mentions']['screen_name'] for tweet in self.tweets_list]
+        mentions = []
+        for i in range(len(self.tweets_list)):
+            values = []
+            for lists in self.tweets_list[i]['entities']['user_mentions']:
+                values.append(lists['screen_name'])
+                mentions.append(values)
 
+        return mentions
 
     def find_location(self)->list:
         try:
-            location = self.tweets_list['user']['location']
+            location = [x.get('user', {}).get('location', None) for x in self.tweets_list]
         except TypeError:
             location = ''
         
         return location
+        
+    def find_lang(self) -> list:
+        lang = [self.tweets_list[i]['lang'] for i in range(len(self.tweets_list))]
 
-    
+        return lang
         
-        
-    def get_tweet_df(self, save=False)->pd.DataFrame:
+    def get_tweet_df(self, save=True)->pd.DataFrame:
         """required column to be generated you should be creative and add more features"""
         
         columns = ['created_at', 'source', 'original_text','polarity','subjectivity', 'lang', 'favorite_count', 'retweet_count', 
@@ -131,17 +137,19 @@ class TweetDfExtractor:
         source = self.find_source()
         text = self.find_full_text()
         polarity, subjectivity = self.find_sentiments(text)
-        lang = self.find_lang()
         fav_count = self.find_favourite_count()
         retweet_count = self.find_retweet_count()
         screen_name = self.find_screen_name()
         follower_count = self.find_followers_count()
         friends_count = self.find_friends_count()
+        favorite_count = self.find_favourite_count()
         sensitivity = self.is_sensitive()
         hashtags = self.find_hashtags()
         mentions = self.find_mentions()
         location = self.find_location()
-        data = zip(created_at, source, text, polarity, subjectivity, lang, fav_count, retweet_count, screen_name, follower_count, friends_count, sensitivity, hashtags, mentions, location)
+        lang = self.find_lang()
+        data = zip(created_at, source, text,polarity,subjectivity, lang, favorite_count, retweet_count, 
+            screen_name, follower_count,friends_count,sensitivity, hashtags, mentions, location)
         df = pd.DataFrame(data=data, columns=columns)
 
         if save:
@@ -155,7 +163,19 @@ if __name__ == "__main__":
     # required column to be generated you should be creative and add more features
     columns = ['created_at', 'source', 'original_text','clean_text', 'sentiment','polarity','subjectivity', 'lang', 'favorite_count', 'retweet_count', 
     'original_author', 'screen_count', 'followers_count','friends_count','possibly_sensitive', 'hashtags', 'user_mentions', 'place', 'place_coord_boundaries']
-    _, tweet_list = read_json("../covid19.json")
+    json_data = []
+    data = None  
+    with zipfile.ZipFile("./data/Economic_Twitter_Data.zip", "r") as z:
+       for filename in z.namelist():  
+          with z.open(filename) as f:
+            if f.name == 'Economic_Twitter_Data.json':
+                # print(f)
+                # data = f.read()  
+                # d = json.loads(data) 
+                for ele in f:
+                    json_data.append(json.loads(ele))
+
+    tweet_list = json_data
     tweet = TweetDfExtractor(tweet_list)
     tweet_df = tweet.get_tweet_df() 
 
