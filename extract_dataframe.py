@@ -169,7 +169,6 @@ if __name__ == "__main__":
        for filename in z.namelist():  
           with z.open(filename) as f:
             if f.name == 'Economic_Twitter_Data.json':
-                # print(f)
                 # data = f.read()  
                 # d = json.loads(data) 
                 for ele in f:

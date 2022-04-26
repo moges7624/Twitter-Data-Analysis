@@ -22,7 +22,6 @@ tweet_list = json_data
 
 columns = columns = ['created_at', 'source', 'original_text','polarity','subjectivity', 'lang', 'favorite_count', 'retweet_count', 'original_author', 'followers_count','friends_count','possibly_sensitive', 'hashtags', 'user_mentions', 'place']
 
-
 class TestTweetDfExtractor(unittest.TestCase):
     """
 		A class for unit-testing function in the fix_clean_tweets_dataframe.py file
